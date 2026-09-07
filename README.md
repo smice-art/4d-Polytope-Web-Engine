@@ -18,5 +18,5 @@ The idea behind this add-on was to make it possible, beside "jenn3D" or other gr
 
 | Object | Preview |
 | :--- | :--- |
-| <img src="images/2.jpg" width="250"> | <img src="images/3.jpg" width="250"> |
-| <img src="images/4.jpg" width="250"> | <img src="images/5.jpg" width="250"> |
+| <img src="images/poly2.jpg" width="250"> | <img src="images/poly3.jpg" width="250"> |
+| <img src="images/poly4.jpg" width="250"> | <img src="images/poly5.jpg" width="250"> |
