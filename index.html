@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Polytope Engine</title>
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --accent: #feef4f;
+            --accent-dual: #ff8c42;
+            --panel-bg: rgba(20, 20, 25, 0.65);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #eee;
+        }
+
+        #webgl-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 320px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            z-index: 10;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+            max-height: calc(100vh - 48px);
+            overflow-y: auto;
+        }
+
+        #ui-panel::-webkit-scrollbar { width: 0px; }
+
+        .ui-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 18px 0 10px;
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        .section-label:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .val-display {
+            color: var(--accent);
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        select option {
+            background: var(--bg);
+            color: #eee;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #ccc;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+        input[type=color] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+        input[type=color]::-webkit-color-swatch-wrapper { padding: 4px; }
+        input[type=color]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        .export-row { display: flex; gap: 8px; }
+        .export-btn {
+            flex: 1;
+            background: rgba(79, 172, 254, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .export-btn:hover { background: rgba(79, 172, 254, 0.3); }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus { outline: none; }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+
+        input[type=range]:hover::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+
+        #stats-display {
+            margin-top: 4px;
+            font-size: 0.75rem;
+            color: #777;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--accent);
+            font-family: monospace;
+            font-size: 1.2rem;
+            z-index: 20;
+            display: none;
+            background: var(--panel-bg);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div id="webgl-container"></div>
+    <div id="loading">Generating Orbit...</div>
+
+    <div id="ui-panel">
+        <div class="ui-header">Polytope Engine</div>
+
+        <div class="control-group">
+            <select id="form-select">
+                <option value="regular" selected>Regular</option>
+                <option value="uniform">Uniform (Wythoff)</option>
+                <option value="duoprism">Duoprism</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="group-regular">
+            <select id="polytope-select">
+                <option value="5-cell">5-Cell (Simplex)</option>
+                <option value="8-cell" selected>8-Cell (Tesseract)</option>
+                <option value="16-cell">16-Cell (Orthoplex)</option>
+                <option value="24-cell">24-Cell</option>
+                <option value="120-cell">120-Cell (Warning: Heavy)</option>
+                <option value="600-cell">600-Cell</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="group-uniform" style="display:none;">
+            <select id="family-select">
+                <option value="A4">5-Cell family (3-3-3)</option>
+                <option value="B4" selected>8-Cell/16-Cell family (4-3-3)</option>
+                <option value="F4">24-Cell family (3-4-3)</option>
+                <option value="H4">120-Cell/600-Cell family (5-3-3, Warning: Heavy)</option>
+            </select>
+            <div class="checkbox-row" style="margin-top:6px;">
+                <span>Ring node 1</span> <input type="checkbox" id="ring-0" checked>
+            </div>
+            <div class="checkbox-row">
+                <span>Ring node 2</span> <input type="checkbox" id="ring-1">
+            </div>
+            <div class="checkbox-row">
+                <span>Ring node 3</span> <input type="checkbox" id="ring-2">
+            </div>
+            <div class="checkbox-row">
+                <span>Ring node 4</span> <input type="checkbox" id="ring-3">
+            </div>
+        </div>
+
+        <div class="control-group" id="group-duoprism" style="display:none;">
+            <div class="control-label"><span>Sides p</span> <span class="val-display" id="val-duop">3</span></div>
+            <input type="range" id="duo-p" min="3" max="16" step="1" value="3">
+            <div class="control-label" style="margin-top:10px;"><span>Sides q</span> <span class="val-display" id="val-duoq">4</span></div>
+            <input type="range" id="duo-q" min="3" max="16" step="1" value="4">
+        </div>
+
+        <div class="section-label">Projection</div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Style</span></div>
+            <select id="style-select">
+                <option value="straight">Straight (perspective)</option>
+                <option value="curved" selected>Curved (stereographic)</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="group-projdist">
+            <div class="control-label"><span>Proj. Distance</span> <span class="val-display" id="val-dist">2.20</span></div>
+            <input type="range" id="proj-dist" min="1.50" max="5.0" step="0.01" value="2.2">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Rotate XW</span> <span class="val-display" id="val-xw">0.0</span></div>
+            <input type="range" id="rot-xw" min="-180" max="180" step="0.5" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Rotate YW</span> <span class="val-display" id="val-yw">0.0</span></div>
+            <input type="range" id="rot-yw" min="-180" max="180" step="0.5" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Rotate ZW</span> <span class="val-display" id="val-zw">0.0</span></div>
+            <input type="range" id="rot-zw" min="-180" max="180" step="0.5" value="0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Rotate XY</span> <span class="val-display" id="val-xy">0.0</span></div>
+            <input type="range" id="rot-xy" min="-180" max="180" step="0.5" value="0">
+        </div>
+
+        <div class="section-label">Rendering</div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Render</span></div>
+            <select id="render-select">
+                <option value="wireframe">Wireframe (lines)</option>
+                <option value="edges">Edges (tube)</option>
+                <option value="ballstick" selected>Ball &amp; Stick</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Scale</span> <span class="val-display" id="val-scale">1.0</span></div>
+            <input type="range" id="scale" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Curve Segments</span> <span class="val-display" id="val-segments">16</span></div>
+            <input type="range" id="segments" min="1" max="64" step="1" value="16">
+        </div>
+
+        <div class="control-group" id="group-sides">
+            <div class="control-label"><span>Tube Sides</span> <span class="val-display" id="val-sides">6</span></div>
+            <input type="range" id="sides" min="3" max="12" step="1" value="6">
+        </div>
+
+        <div class="control-group" id="group-srad">
+            <div class="control-label"><span>Strut Radius</span> <span class="val-display" id="val-srad">0.020</span></div>
+            <input type="range" id="srad" min="0.005" max="0.1" step="0.005" value="0.02">
+        </div>
+
+        <div class="control-group" id="group-vrad">
+            <div class="control-label"><span>Sphere Radius</span> <span class="val-display" id="val-vrad">0.045</span></div>
+            <input type="range" id="vrad" min="0.01" max="0.2" step="0.01" value="0.045">
+        </div>
+
+        <div class="section-label">Cutaway &amp; Compound</div>
+
+        <label class="checkbox-row">
+            <span>Half Cutaway (w &le; 0)</span>
+            <input type="checkbox" id="half-check">
+        </label>
+        <div id="group-dual-compound">
+            <label class="checkbox-row">
+                <span>Dual Compound</span>
+                <input type="checkbox" id="dual-check">
+            </label>
+        </div>
+
+        <div class="section-label">Colors &amp; Light</div>
+
+        <div class="control-group">
+            <div class="control-label"><span>Edge Color</span></div>
+            <input type="color" id="color-primal-edge" value="#feef4f">
+        </div>
+        <div class="control-group" id="group-color-node">
+            <div class="control-label"><span>Node Color</span></div>
+            <input type="color" id="color-primal-node" value="#ffffff">
+        </div>
+        <div id="group-dual-colors" style="display:none;">
+            <div class="control-group">
+                <div class="control-label"><span>Dual Edge Color</span></div>
+                <input type="color" id="color-dual-edge" value="#ff8c42">
+            </div>
+            <div class="control-group" id="group-color-dual-node">
+                <div class="control-label"><span>Dual Node Color</span></div>
+                <input type="color" id="color-dual-node" value="#ffd9b3">
+            </div>
+        </div>
+        <div class="control-group">
+            <div class="control-label"><span>Scene Light</span> <span class="val-display" id="val-light">1.00</span></div>
+            <input type="range" id="light-slider" min="0" max="3" step="0.05" value="1">
+        </div>
+
+        <div class="section-label">Export</div>
+        <div class="control-group export-row">
+            <button class="export-btn" id="export-obj-btn">Export OBJ</button>
+            <button class="export-btn" id="export-stl-btn">Export STL</button>
+        </div>
+
+        <div id="stats-display">-- vertices, -- edges</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ==================================================================
+        // 1. Math utilities (mirrors the Blender addon's SECTION 2 math,
+        //    but the regular polytopes are generated generically through a
+        //    single-ring Wythoff construction instead of hand-typed
+        //    coordinate sets -- see REGULAR below for why that also gives
+        //    us the dual "for free" by reversing which node is ringed).
+        // ==================================================================
+        function cholesky4x4(G) {
+            let L = Array(4).fill(0).map(() => Array(4).fill(0));
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j <= i; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < j; k++) sum += L[i][k] * L[j][k];
+                    if (i === j) L[i][i] = Math.sqrt(G[i][i] - sum);
+                    else L[i][j] = (1.0 / L[j][j]) * (G[i][j] - sum);
+                }
+            }
+            return L;
+        }
+
+        function invertLower4x4(L) {
+            let inv = Array(4).fill(0).map(() => Array(4).fill(0));
+            for (let i = 0; i < 4; i++) {
+                inv[i][i] = 1.0 / L[i][i];
+                for (let j = 0; j < i; j++) {
+                    let sum = 0;
+                    for (let k = j; k < i; k++) sum += L[i][k] * inv[k][j];
+                    inv[i][j] = -sum / L[i][i];
+                }
+            }
+            return inv;
+        }
+
+        function generateWythoff(p, q, r, activeNodes) {
+            const c = (n) => -Math.cos(Math.PI / n);
+            const G = [[1, c(p), 0, 0], [c(p), 1, c(q), 0], [0, c(q), 1, c(r)], [0, 0, c(r), 1]];
+            const L = cholesky4x4(G);
+            const invL = invertLower4x4(L);
+
+            let V0 = [0, 0, 0, 0];
+            for (let j = 0; j < 4; j++) {
+                if (activeNodes[j]) {
+                    for (let k = 0; k < 4; k++) V0[k] += invL[k][j] * activeNodes[j];
+                }
+            }
+
+            let len = Math.sqrt(V0.reduce((a, b) => a + b * b, 0));
+            V0 = V0.map(v => v / len);
+
+            const vertices = [V0];
+            const queue = [V0];
+            const EPSILON = 1e-6;
+
+            const reflect = (v, n) => {
+                let dot = v[0]*n[0] + v[1]*n[1] + v[2]*n[2] + v[3]*n[3];
+                return [v[0] - 2*dot*n[0], v[1] - 2*dot*n[1], v[2] - 2*dot*n[2], v[3] - 2*dot*n[3]];
+            };
+
+            while (queue.length > 0) {
+                let curr = queue.shift();
+                for (let i = 0; i < 4; i++) {
+                    let next = reflect(curr, L[i]);
+                    let isNew = true;
+                    for (let v of vertices) {
+                        let d2 = 0;
+                        for (let k = 0; k < 4; k++) d2 += (v[k] - next[k]) ** 2;
+                        if (d2 < EPSILON) { isNew = false; break; }
+                    }
+                    if (isNew) { vertices.push(next); queue.push(next); }
+                }
+            }
+            return vertices;
+        }
+
+        function getPolytopeEdgesExact(V) {
+            const n = V.length;
+            let d2min = null;
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    let d2 = 0;
+                    for (let k = 0; k < 4; k++) d2 += (V[i][k] - V[j][k]) ** 2;
+                    if (d2 > 1e-7 && (d2min === null || d2 < d2min)) d2min = d2;
+                }
+            }
+            const edges = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    let d2 = 0;
+                    for (let k = 0; k < 4; k++) d2 += (V[i][k] - V[j][k]) ** 2;
+                    if (Math.abs(d2 - d2min) < 1e-5) edges.push([i, j]);
+                }
+            }
+            return edges;
+        }
+
+        function rotate4(V, xw, yw, zw, xy) {
+            const out = V.map(v => [...v]);
+            const rotations = [{a:0,b:3,ang:xw}, {a:1,b:3,ang:yw}, {a:2,b:3,ang:zw}, {a:0,b:1,ang:xy}];
+            for (let r of rotations) {
+                let t = r.ang * Math.PI / 180.0;
+                if (Math.abs(t) < 1e-12) continue;
+                let c = Math.cos(t), s = Math.sin(t);
+                for (let v of out) {
+                    let va = v[r.a], vb = v[r.b];
+                    v[r.a] = va * c - vb * s;
+                    v[r.b] = va * s + vb * c;
+                }
+            }
+            return out;
+        }
+
+        // Safe perspective / stereographic projection. Returns [x, y, z, s]
+        // where s = 1/denom is the local foreshortening factor, used to
+        // taper strut radii the way the addon's project_point() does.
+        function projectPoint(v, dist) {
+            // s = 1/denom, saturated smoothly toward S_MAX as denom -> 0,
+            // instead of a hard/reflective clamp. The previous clamp
+            // ( denom = 0.2 + (0.2-denom)*0.1 for denom<0.2 ) was NOT
+            // monotonic: past denom ~0.18 it started producing SMALLER s
+            // as denom kept shrinking, i.e. a point closer to the pole
+            // could project SMALLER than one slightly farther away -- a
+            // genuine fold-back, not just a cap. That's what showed up as
+            // curves looking clipped against an invisible boundary on
+            // anything with enough vertices/edges to have points land in
+            // that w-range. This harmonic-mean form is strictly increasing
+            // in s for all denom > 0 and approaches S_MAX smoothly, so nothing
+            // ever folds back.
+            const S_MAX = 6.0;
+            const denom = dist - v[3];
+            let s;
+            if (denom <= 1e-6) {
+                s = S_MAX;
+            } else {
+                const sRaw = 1.0 / denom;
+                s = (S_MAX * sRaw) / (S_MAX + sRaw);
+            }
+            return [v[0] * s, v[1] * s, v[2] * s, s];
+        }
+
+        function slerp4(v1, v2, t, dot) {
+            dot = Math.max(-1, Math.min(1, dot));
+            let theta = Math.acos(dot);
+            if (Math.abs(theta) < 1e-5) return v1;
+            let sinTheta = Math.sin(theta);
+            let w1 = Math.sin((1 - t) * theta) / sinTheta;
+            let w2 = Math.sin(t * theta) / sinTheta;
+            return [
+                v1[0]*w1 + v2[0]*w2,
+                v1[1]*w1 + v2[1]*w2,
+                v1[2]*w1 + v2[2]*w2,
+                v1[3]*w1 + v2[3]*w2
+            ];
+        }
+
+        function dot4(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] + a[3]*b[3]; }
+
+        // --- 3D helpers for building continuous strut tubes -------------
+        function sub3(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+        function cross3(a, b) {
+            return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+        }
+        function unit3(v) {
+            const l = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]) || 1.0;
+            return [v[0]/l, v[1]/l, v[2]/l];
+        }
+
+        // Parallel-transported (u, w) cross-section frame along a 3D
+        // polyline, mirroring the addon's add_strut ring frame: each ring's
+        // "u" is the previous ring's "u" projected into the plane
+        // perpendicular to the new tangent, so consecutive rings share a
+        // consistent orientation instead of each cylinder segment picking
+        // its own -- that shared orientation is what lets rings be stitched
+        // into ONE continuous tube surface with no seam between segments.
+        function buildFrames(pts) {
+            const n = pts.length;
+            const us = new Array(n), ws = new Array(n);
+            let prevU = null;
+            for (let i = 0; i < n; i++) {
+                let t;
+                if (i === 0) t = unit3(sub3(pts[1], pts[0]));
+                else if (i === n - 1) t = unit3(sub3(pts[n - 1], pts[n - 2]));
+                else t = unit3(sub3(pts[i + 1], pts[i - 1]));
+
+                let u;
+                if (prevU === null) {
+                    const ref = Math.abs(t[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+                    u = unit3(cross3(t, ref));
+                } else {
+                    u = unit3(cross3(t, cross3(prevU, t)));
+                }
+                const w = cross3(t, u);
+                prevU = u;
+                us[i] = u; ws[i] = w;
+            }
+            return { us, ws };
+        }
+
+        // Fixed index/connectivity buffer for `numEdges` continuous tubes,
+        // each made of `n` rings of `sides` vertices. Built once per
+        // topology change; only vertex positions are refreshed per frame.
+        function buildTubeIndices(numEdges, n, sides) {
+            const indices = [];
+            const vertsPerEdge = n * sides;
+            for (let e = 0; e < numEdges; e++) {
+                const base = e * vertsPerEdge;
+                for (let i = 0; i < n - 1; i++) {
+                    for (let s = 0; s < sides; s++) {
+                        const s2 = (s + 1) % sides;
+                        const a = base + i * sides + s;
+                        const b = base + i * sides + s2;
+                        const c = base + (i + 1) * sides + s2;
+                        const d = base + (i + 1) * sides + s;
+                        indices.push(a, b, c,  a, c, d);
+                    }
+                }
+                // end caps (simple fan triangulation) so open tube ends
+                // don't show as a hollow hole in Edges-only render mode
+                for (let s = 1; s < sides - 1; s++) indices.push(base, base + s, base + s + 1);
+                const endBase = base + (n - 1) * sides;
+                for (let s = 1; s < sides - 1; s++) indices.push(endBase, endBase + s + 1, endBase + s);
+            }
+            return indices;
+        }
+
+        // Equatorial cutaway: keep only vertices with w <= tol (mirrors the
+        // addon's _half_filter, applied before the viewing rotation).
+        function halfFilter(V, E, tol = 1e-6) {
+            const remap = new Map();
+            const V2 = [];
+            V.forEach((v, i) => {
+                if (v[3] <= tol) { remap.set(i, V2.length); V2.push(v); }
+            });
+            const E2 = [];
+            for (const [a, b] of E) {
+                if (remap.has(a) && remap.has(b)) E2.push([remap.get(a), remap.get(b)]);
+            }
+            return { V: V2, E: E2 };
+        }
+
+        // Distance of a dual vertex's "cell centroid direction" from the
+        // origin, used to rescale the dual compound onto the primal's cell
+        // centers under the STRAIGHT style (mirrors _cell_inradius).
+        function cellInradius(primalV, dualV0, cellSize) {
+            const idx = primalV
+                .map((v, i) => ({ i, d: dot4(v, dualV0) }))
+                .sort((a, b) => b.d - a.d)
+                .slice(0, cellSize)
+                .map(o => o.i);
+            const c = [0, 0, 0, 0];
+            idx.forEach(i => { for (let k = 0; k < 4; k++) c[k] += primalV[i][k]; });
+            for (let k = 0; k < 4; k++) c[k] /= cellSize;
+            return Math.sqrt(c.reduce((a, x) => a + x * x, 0));
+        }
+
+        // Coarse search for a small extra XW/YW rotation that moves every
+        // vertex away from the stereographic pole (w ~ dist), mirroring the
+        // addon's _pole_angles grid search (numpy there, plain loops here).
+        function poleAngles(V, target = 0.3) {
+            let maxW = -Infinity;
+            for (const v of V) if (v[3] > maxW) maxW = v[3];
+            if (maxW < 0.8) return [0, 0];
+            let best = maxW;
+            let bestAngles = [0, 0];
+            outer:
+            for (let ai = 0; ai < 180; ai += 6) {
+                const t1 = ai * Math.PI / 180, c1 = Math.cos(t1), s1 = Math.sin(t1);
+                for (let bi = 0; bi < 180; bi += 6) {
+                    const t2 = bi * Math.PI / 180, c2 = Math.cos(t2), s2 = Math.sin(t2);
+                    let m = -Infinity;
+                    for (const v of V) {
+                        const w1 = s1 * v[0] + c1 * v[3];
+                        const w2 = s2 * v[1] + c2 * w1;
+                        if (w2 > m) m = w2;
+                    }
+                    if (m < best) { best = m; bestAngles = [ai, bi]; }
+                    if (best <= target) break outer;
+                }
+            }
+            return bestAngles;
+        }
+
+        // ==================================================================
+        // 2. State
+        // ==================================================================
+
+        // (p, q, r, ringed node) per regular 4-polytope. Ringing the OTHER
+        // end of the same Coxeter chain (nodes reversed) generates the dual
+        // for free -- e.g. tesseract [0,0,0,1] <-> 16-cell [1,0,0,0] on the
+        // same B4 diagram -- so no separate hand-typed dual coordinates are
+        // needed the way the Python version has for CELL24.
+        // NOTE: the original file had the tesseract/16-cell and 120-cell/
+        // 600-cell node-ringings swapped (selecting "Tesseract" silently
+        // built a 16-cell's vertex count, and vice versa) -- fixed here;
+        // verified against the known vertex/edge counts in a Node test.
+        const REGULAR = {
+            '5-cell':   { p: 3, q: 3, r: 3, nodes: [1, 0, 0, 0], cellSize: 4 },
+            '8-cell':   { p: 4, q: 3, r: 3, nodes: [1, 0, 0, 0], cellSize: 8 },
+            '16-cell':  { p: 4, q: 3, r: 3, nodes: [0, 0, 0, 1], cellSize: 4 },
+            '24-cell':  { p: 3, q: 4, r: 3, nodes: [1, 0, 0, 0], cellSize: 6 },
+            '120-cell': { p: 5, q: 3, r: 3, nodes: [1, 0, 0, 0], cellSize: 20 },
+            '600-cell': { p: 5, q: 3, r: 3, nodes: [0, 0, 0, 1], cellSize: 4 },
+        };
+
+        // Coxeter families for the Uniform form. Ringing any nonempty subset
+        // of the 4 nodes on generateWythoff already produces a genuine
+        // uniform polytope (single ring = one of the REGULAR forms above,
+        // 2+ rings = rectified/truncated/cantellated/runcinated/omnitruncated
+        // forms) -- validated in Node against 14 known Wikipedia vertex/edge
+        // counts spanning 1-4 rings, using the SAME shortest-distance edge
+        // rule already used for the regular polytopes (edges of a Wythoffian
+        // uniform polytope are always exactly the globally-shortest-distance
+        // vertex pairs, regardless of how many nodes are ringed).
+        const FAMILIES = {
+            'A4': { p: 3, q: 3, r: 3 },
+            'B4': { p: 4, q: 3, r: 3 },
+            'F4': { p: 3, q: 4, r: 3 },
+            'H4': { p: 5, q: 3, r: 3 },
+        };
+
+        // Duoprism {p} x {q}: Cartesian product of two polygons in
+        // orthogonal planes, radii chosen so every vertex lands on the unit
+        // 3-sphere (consistent with the rest of the app's projection/style
+        // assumptions). Not a Wythoffian construction -- separate generator.
+        function generateDuoprism(p, q) {
+            const r1 = 1 / Math.sqrt(2), r2 = 1 / Math.sqrt(2);
+            const V = [];
+            const idx = (i, j) => i * q + j;
+            for (let i = 0; i < p; i++) {
+                for (let j = 0; j < q; j++) {
+                    const a = 2 * Math.PI * i / p, b = 2 * Math.PI * j / q;
+                    V.push([Math.cos(a) * r1, Math.sin(a) * r1, Math.cos(b) * r2, Math.sin(b) * r2]);
+                }
+            }
+            const E = [];
+            for (let i = 0; i < p; i++) {
+                for (let j = 0; j < q; j++) {
+                    E.push([idx(i, j), idx((i + 1) % p, j)]);
+                    E.push([idx(i, j), idx(i, (j + 1) % q)]);
+                }
+            }
+            return { V, E };
+        }
+
+        const settings = {
+            form: 'regular',                    // 'regular' | 'uniform' | 'duoprism'
+            kind: '8-cell',                      // Regular form
+            family: 'B4', ringNodes: [1, 0, 0, 0], // Uniform form
+            duoP: 3, duoQ: 4,                    // Duoprism form
+            style: 'curved', render: 'ballstick', half: false, dualCompound: false,
+            colorPrimalEdge: 0xfeef4f, colorPrimalNode: 0xffffff,
+            colorDualEdge: 0xff8c42, colorDualNode: 0xffd9b3,
+        };
+        const params = { rotXW: 0, rotYW: 0, rotZW: 0, rotXY: 0, projDist: 2.2, scale: 1.0, segments: 16, sides: 6, srad: 0.02, vrad: 0.045 };
+
+        let systems = [];    // [{ V, E, colorEdge, colorNode }]
+        let renderObjs = []; // [{ system, lines? | (tubeMesh, sphereMesh?) }]
+
+        // ==================================================================
+        // 3. Topology (vertices/edges) -- rebuilt on kind/style/half/dual
+        //    changes, NOT every frame.
+        // ==================================================================
+        function buildTopology() {
+            let fullPrimalV, fullPrimalE, conf = null;
+
+            if (settings.form === 'regular') {
+                conf = REGULAR[settings.kind];
+                fullPrimalV = generateWythoff(conf.p, conf.q, conf.r, conf.nodes);
+                fullPrimalE = getPolytopeEdgesExact(fullPrimalV);
+            } else if (settings.form === 'uniform') {
+                const fam = FAMILIES[settings.family];
+                fullPrimalV = generateWythoff(fam.p, fam.q, fam.r, settings.ringNodes);
+                fullPrimalE = getPolytopeEdgesExact(fullPrimalV);
+            } else { // duoprism
+                const r = generateDuoprism(settings.duoP, settings.duoQ);
+                fullPrimalV = r.V; fullPrimalE = r.E;
+            }
+
+            let sys = [];
+            let pv = fullPrimalV, pe = fullPrimalE;
+            if (settings.half) { const r = halfFilter(pv, pe); pv = r.V; pe = r.E; }
+            sys.push({ V: pv, E: pe, colorEdge: settings.colorPrimalEdge, colorNode: settings.colorPrimalNode });
+
+            // Dual compound only makes sense for Regular: reversing the ring
+            // gives a genuine dual there, but a multi-ring Uniform polytope's
+            // true dual generally isn't itself a simple Wythoffian, and a
+            // duoprism's dual (a "duotegum") is a different construction.
+            if (settings.form === 'regular' && settings.dualCompound) {
+                const dualNodes = [...conf.nodes].reverse();
+                let dv = generateWythoff(conf.p, conf.q, conf.r, dualNodes);
+                let de = getPolytopeEdgesExact(dv);
+                if (settings.style === 'straight') {
+                    const rad = cellInradius(fullPrimalV, dv[0], conf.cellSize);
+                    dv = dv.map(v => v.map(x => x * rad));
+                }
+                if (settings.half) { const r = halfFilter(dv, de); dv = r.V; de = r.E; }
+                sys.push({ V: dv, E: de, colorEdge: settings.colorDualEdge, colorNode: settings.colorDualNode });
+            }
+            systems = sys;
+        }
+
+        // ==================================================================
+        // 4. Three.js scene
+        // ==================================================================
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0f0f13, 0.05);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(3, 4, 6);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        const LIGHT_BASE = { ambient: 0.4, dir: 0.8, point: 1.0 };
+        const ambientLight = new THREE.AmbientLight(0xffffff, LIGHT_BASE.ambient);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, LIGHT_BASE.dir);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+        const pointLight = new THREE.PointLight(0xfeef4f, LIGHT_BASE.point, 20);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+
+        const renderGroup = new THREE.Group();
+        scene.add(renderGroup);
+
+        const sphereGeo = new THREE.SphereGeometry(1, 16, 16);
+
+        const dummy = new THREE.Object3D();
+
+        function disposeRenderObjects() {
+            for (const obj of renderGroup.children.slice()) {
+                renderGroup.remove(obj);
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) obj.material.dispose();
+            }
+            renderObjs = [];
+        }
+
+        // Rebuilds the Three.js objects (instance counts / line buffer
+        // sizes) from the current `systems` + render/segment/side settings.
+        // Cheap enough to call on any discrete UI change; positions are
+        // filled in every frame by updateGeometry().
+        function buildRenderObjects() {
+            disposeRenderObjects();
+            const segs = Math.max(1, params.segments);
+
+            for (const sys of systems) {
+                const entry = { system: sys };
+
+                if (settings.render === 'wireframe') {
+                    const nFloats = sys.E.length * segs * 2 * 3;
+                    const positions = new Float32Array(nFloats);
+                    const geo = new THREE.BufferGeometry();
+                    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    const mat = new THREE.LineBasicMaterial({ color: sys.colorEdge });
+                    const lines = new THREE.LineSegments(geo, mat);
+                    renderGroup.add(lines);
+                    entry.lines = lines;
+                } else {
+                    const sides = Math.max(3, params.sides);
+                    const n = segs + 1;
+                    const vertsPerEdge = n * sides;
+                    const numEdges = sys.E.length;
+                    const totalVerts = Math.max(1, numEdges) * vertsPerEdge;
+
+                    const positions = new THREE.BufferAttribute(new Float32Array(totalVerts * 3), 3);
+                    const normalsAttr = new THREE.BufferAttribute(new Float32Array(totalVerts * 3), 3);
+                    positions.setUsage(THREE.DynamicDrawUsage);
+                    normalsAttr.setUsage(THREE.DynamicDrawUsage);
+
+                    const tubeGeo = new THREE.BufferGeometry();
+                    tubeGeo.setAttribute('position', positions);
+                    tubeGeo.setAttribute('normal', normalsAttr);
+                    tubeGeo.setIndex(buildTubeIndices(numEdges, n, sides));
+
+                    // DoubleSide: cap-triangle winding is a simple fan, not
+                    // rigorously oriented outward, so this avoids the small
+                    // chance of a backface-culled cap looking like a hole.
+                    const edgeMat = new THREE.MeshStandardMaterial({ color: sys.colorEdge, metalness: 0.3, roughness: 0.2, side: THREE.DoubleSide });
+                    const tubeMeshObj = new THREE.Mesh(tubeGeo, edgeMat);
+                    renderGroup.add(tubeMeshObj);
+                    entry.tubeGeo = tubeGeo;
+                    entry.tubeMeshObj = tubeMeshObj;
+                    entry.tubeN = n;
+                    entry.tubeSides = sides;
+                    entry.tubeVertsPerEdge = vertsPerEdge;
+
+                    if (settings.render === 'ballstick') {
+                        const nodeMat = new THREE.MeshStandardMaterial({ color: sys.colorNode, metalness: 0.2, roughness: 0.1 });
+                        const sphereMesh = new THREE.InstancedMesh(sphereGeo, nodeMat, Math.max(1, sys.V.length));
+                        sphereMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                        renderGroup.add(sphereMesh);
+                        entry.sphereMesh = sphereMesh;
+                    }
+                }
+                renderObjs.push(entry);
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            let nv = 0, ne = 0;
+            for (const sys of systems) { nv += sys.V.length; ne += sys.E.length; }
+            let text = nv + ' vertices, ' + ne + ' edges';
+            if (nv > 3000) text += ' (heavy -- rebuild may take a few seconds)';
+            document.getElementById('stats-display').textContent = text;
+        }
+
+        // ==================================================================
+        // Export (OBJ / STL). Self-contained rather than relying on
+        // Three.js's bundled examples/js exporters: those read a mesh's
+        // base geometry plus its own matrixWorld only, so they silently
+        // ignore per-instance transforms on an InstancedMesh -- exactly
+        // what our Ball & Stick vertex spheres are. Manually flattening
+        // instances first sidesteps that; a plain OBJ/STL writer from the
+        // resulting triangle soup is barely more code anyway.
+        // ==================================================================
+        function collectExportTriangles() {
+            const positions = [];
+            const triangles = [];
+
+            function addTrianglesFrom(posAttr, idxAttr, base) {
+                if (idxAttr) {
+                    for (let i = 0; i < idxAttr.count; i += 3) {
+                        triangles.push([base + idxAttr.getX(i), base + idxAttr.getX(i + 1), base + idxAttr.getX(i + 2)]);
+                    }
+                } else {
+                    for (let i = 0; i < posAttr.count; i += 3) triangles.push([base + i, base + i + 1, base + i + 2]);
+                }
+            }
+
+            const m4 = new THREE.Matrix4();
+            const v3 = new THREE.Vector3();
+
+            for (const entry of renderObjs) {
+                if (entry.tubeGeo) {
+                    const posAttr = entry.tubeGeo.attributes.position;
+                    const base = positions.length;
+                    for (let i = 0; i < posAttr.count; i++) positions.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
+                    addTrianglesFrom(posAttr, entry.tubeGeo.index, base);
+                }
+                if (entry.sphereMesh) {
+                    const im = entry.sphereMesh;
+                    const posAttr = im.geometry.attributes.position;
+                    for (let inst = 0; inst < im.count; inst++) {
+                        im.getMatrixAt(inst, m4);
+                        const base = positions.length;
+                        for (let i = 0; i < posAttr.count; i++) {
+                            v3.fromBufferAttribute(posAttr, i).applyMatrix4(m4);
+                            positions.push([v3.x, v3.y, v3.z]);
+                        }
+                        addTrianglesFrom(posAttr, im.geometry.index, base);
+                    }
+                }
+            }
+            return { positions, triangles };
+        }
+
+        function toOBJ(positions, triangles) {
+            const lines = ['# 4D Polytope Engine export'];
+            for (const p of positions) lines.push('v ' + p[0] + ' ' + p[1] + ' ' + p[2]);
+            for (const t of triangles) lines.push('f ' + (t[0] + 1) + ' ' + (t[1] + 1) + ' ' + (t[2] + 1));
+            return lines.join('\n') + '\n';
+        }
+
+        function toSTL(positions, triangles) {
+            const lines = ['solid polytope'];
+            for (const t of triangles) {
+                const a = positions[t[0]], b = positions[t[1]], c = positions[t[2]];
+                const ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
+                const vx = c[0]-a[0], vy = c[1]-a[1], vz = c[2]-a[2];
+                let nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
+                const len = Math.hypot(nx, ny, nz) || 1;
+                nx /= len; ny /= len; nz /= len;
+                lines.push(
+                    '  facet normal ' + nx + ' ' + ny + ' ' + nz,
+                    '    outer loop',
+                    '      vertex ' + a[0] + ' ' + a[1] + ' ' + a[2],
+                    '      vertex ' + b[0] + ' ' + b[1] + ' ' + b[2],
+                    '      vertex ' + c[0] + ' ' + c[1] + ' ' + c[2],
+                    '    endloop',
+                    '  endfacet'
+                );
+            }
+            lines.push('endsolid polytope');
+            return lines.join('\n') + '\n';
+        }
+
+        function doExport(format) {
+            const { positions, triangles } = collectExportTriangles();
+            if (triangles.length === 0) {
+                alert('Nothing solid to export in Wireframe mode -- switch Render to "Edges (tube)" or "Ball & Stick" first.');
+                return;
+            }
+            const isStl = format === 'stl';
+            const dataStr = isStl ? toSTL(positions, triangles) : toOBJ(positions, triangles);
+            const blob = new Blob([dataStr], { type: isStl ? 'model/stl' : 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'polytope.' + (isStl ? 'stl' : 'obj');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function subdivideEdge(RV, i, j, style, dist, scale, segs) {
+            const pts = [];
+            const ss = [];
+            if (style === 'curved') {
+                const v1 = RV[i], v2 = RV[j];
+                const d = dot4(v1, v2);
+                for (let k = 0; k <= segs; k++) {
+                    const t = k / segs;
+                    const q = slerp4(v1, v2, t, d);
+                    const proj = projectPoint(q, dist);
+                    pts.push([proj[0] * scale, proj[1] * scale, proj[2] * scale]);
+                    ss.push(proj[3]);
+                }
+            } else {
+                const proj1 = projectPoint(RV[i], dist);
+                const proj2 = projectPoint(RV[j], dist);
+                const a = [proj1[0] * scale, proj1[1] * scale, proj1[2] * scale];
+                const b = [proj2[0] * scale, proj2[1] * scale, proj2[2] * scale];
+                for (let k = 0; k <= segs; k++) {
+                    const t = k / segs;
+                    pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+                    ss.push(proj1[3] + (proj2[3] - proj1[3]) * t);
+                }
+            }
+            return { pts, ss };
+        }
+
+        // ==================================================================
+        // 5. Per-frame update: rotation + (curved-style) pole avoidance +
+        //    projection. No allocation of new Three.js objects here.
+        // ==================================================================
+        function updateGeometry() {
+            if (!renderObjs.length) return;
+            const dist = settings.style === 'curved' ? 1.0 : Math.max(params.projDist, 1.001);
+            const segs = Math.max(1, params.segments);
+
+            let rotatedV = systems.map(sys => rotate4(sys.V, params.rotXW, params.rotYW, params.rotZW, params.rotXY));
+
+            if (settings.style === 'curved') {
+                const allV = rotatedV.flat();
+                const [pa, pb] = poleAngles(allV);
+                if (pa !== 0 || pb !== 0) {
+                    rotatedV = rotatedV.map(V => rotate4(V, pa, pb, 0, 0));
+                }
+            }
+
+            for (let si = 0; si < systems.length; si++) {
+                const sys = systems[si];
+                const RV = rotatedV[si];
+                const entry = renderObjs[si];
+                if (!entry) continue;
+
+                if (entry.lines) {
+                    const posAttr = entry.lines.geometry.attributes.position;
+                    const arr = posAttr.array;
+                    for (let e = 0; e < sys.E.length; e++) {
+                        const { pts } = subdivideEdge(RV, sys.E[e][0], sys.E[e][1], settings.style, dist, params.scale, segs);
+                        for (let k = 0; k < segs; k++) {
+                            const o = (e * segs + k) * 6;
+                            arr[o] = pts[k][0]; arr[o + 1] = pts[k][1]; arr[o + 2] = pts[k][2];
+                            arr[o + 3] = pts[k + 1][0]; arr[o + 4] = pts[k + 1][1]; arr[o + 5] = pts[k + 1][2];
+                        }
+                    }
+                    posAttr.needsUpdate = true;
+                }
+
+                if (entry.tubeGeo) {
+                    const posArr = entry.tubeGeo.attributes.position.array;
+                    const normArr = entry.tubeGeo.attributes.normal.array;
+                    const sidesLocal = entry.tubeSides, vpe = entry.tubeVertsPerEdge;
+                    const twoPiOverSides = (2 * Math.PI) / sidesLocal;
+
+                    for (let e = 0; e < sys.E.length; e++) {
+                        // pts/ss: sample points along the curved/straight
+                        // edge and their per-point foreshortening factor.
+                        const { pts, ss } = subdivideEdge(RV, sys.E[e][0], sys.E[e][1], settings.style, dist, params.scale, segs);
+                        // one shared, non-twisting frame per edge -> rings
+                        // line up ring-to-ring with no seam between them.
+                        const { us, ws } = buildFrames(pts);
+                        const base = e * vpe;
+
+                        for (let i = 0; i < entry.tubeN; i++) {
+                            const r = params.srad * params.scale * ss[i];
+                            const u = us[i], w = ws[i], pt = pts[i];
+                            for (let s = 0; s < sidesLocal; s++) {
+                                const ang = s * twoPiOverSides;
+                                const ca = Math.cos(ang), sa = Math.sin(ang);
+                                const nx = ca * u[0] + sa * w[0];
+                                const ny = ca * u[1] + sa * w[1];
+                                const nz = ca * u[2] + sa * w[2];
+                                const vidx = (base + i * sidesLocal + s) * 3;
+                                posArr[vidx] = pt[0] + r * nx;
+                                posArr[vidx + 1] = pt[1] + r * ny;
+                                posArr[vidx + 2] = pt[2] + r * nz;
+                                normArr[vidx] = nx; normArr[vidx + 1] = ny; normArr[vidx + 2] = nz;
+                            }
+                        }
+                    }
+                    entry.tubeGeo.attributes.position.needsUpdate = true;
+                    entry.tubeGeo.attributes.normal.needsUpdate = true;
+                }
+
+                if (entry.sphereMesh) {
+                    for (let i = 0; i < RV.length; i++) {
+                        const proj = projectPoint(RV[i], dist);
+                        dummy.position.set(proj[0] * params.scale, proj[1] * params.scale, proj[2] * params.scale);
+                        // Match the strut radius formula (params.srad * params.scale * s)
+                        // so the sphere keeps covering the tube joint even where
+                        // projection stretches things a lot (e.g. near the
+                        // stereographic pole) -- previously this was a fixed
+                        // size, so a strut could balloon past its cap there.
+                        const r = params.vrad * params.scale * proj[3];
+                        dummy.scale.set(r, r, r);
+                        dummy.rotation.set(0, 0, 0);
+                        dummy.updateMatrix();
+                        entry.sphereMesh.setMatrixAt(i, dummy.matrix);
+                    }
+                    entry.sphereMesh.instanceMatrix.needsUpdate = true;
+                }
+            }
+        }
+
+        // ==================================================================
+        // 6. UI wiring
+        // ==================================================================
+        function fullRebuild() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            setTimeout(() => {
+                buildTopology();
+                buildRenderObjects();
+                loading.style.display = 'none';
+            }, 30);
+        }
+
+        function toggleStyleUI() {
+            document.getElementById('group-projdist').style.display = settings.style === 'straight' ? '' : 'none';
+        }
+
+        function toggleFormUI() {
+            document.getElementById('group-regular').style.display = settings.form === 'regular' ? '' : 'none';
+            document.getElementById('group-uniform').style.display = settings.form === 'uniform' ? '' : 'none';
+            document.getElementById('group-duoprism').style.display = settings.form === 'duoprism' ? '' : 'none';
+            // Dual Compound relies on node-reversal (Regular) / cellSize --
+            // neither has a well-defined meaning for Uniform or Duoprism.
+            document.getElementById('group-dual-compound').style.display = settings.form === 'regular' ? '' : 'none';
+        }
+
+        function toggleRenderUI() {
+            const isWire = settings.render === 'wireframe';
+            const isBall = settings.render === 'ballstick';
+            document.getElementById('group-sides').style.display = isWire ? 'none' : '';
+            document.getElementById('group-srad').style.display = isWire ? 'none' : '';
+            document.getElementById('group-vrad').style.display = isBall ? '' : 'none';
+            updateColorVisibility();
+        }
+
+        function updateColorVisibility() {
+            const isBall = settings.render === 'ballstick';
+            document.getElementById('group-color-node').style.display = isBall ? '' : 'none';
+            document.getElementById('group-dual-colors').style.display = settings.dualCompound ? '' : 'none';
+            document.getElementById('group-color-dual-node').style.display = isBall ? '' : 'none';
+        }
+
+        const setupSlider = (id, paramKey, isFloat = false, isFine = false, onChangeExtra = null) => {
+            const slider = document.getElementById(id);
+            const displayId = 'val-' + id.replace('rot-', '');
+            const display = document.getElementById(displayId);
+
+            slider.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                params[paramKey] = val;
+                display.textContent = isFine ? val.toFixed(3) : (isFloat ? val.toFixed(2) : val.toString());
+                if (onChangeExtra) onChangeExtra();
+            });
+        };
+
+        setupSlider('rot-xw', 'rotXW');
+        setupSlider('rot-yw', 'rotYW');
+        setupSlider('rot-zw', 'rotZW');
+        setupSlider('rot-xy', 'rotXY');
+        setupSlider('proj-dist', 'projDist', true);
+        setupSlider('scale', 'scale', true);
+        setupSlider('segments', 'segments', false, false, buildRenderObjects);
+        setupSlider('sides', 'sides', false, false, buildRenderObjects);
+        setupSlider('srad', 'srad', false, true);
+        setupSlider('vrad', 'vrad', true);
+
+        document.getElementById('polytope-select').addEventListener('change', (e) => {
+            settings.kind = e.target.value;
+            fullRebuild();
+        });
+
+        document.getElementById('form-select').addEventListener('change', (e) => {
+            settings.form = e.target.value;
+            toggleFormUI();
+            fullRebuild();
+        });
+
+        document.getElementById('family-select').addEventListener('change', (e) => {
+            settings.family = e.target.value;
+            fullRebuild();
+        });
+
+        for (let i = 0; i < 4; i++) {
+            document.getElementById('ring-' + i).addEventListener('change', (e) => {
+                const prev = settings.ringNodes[i];
+                settings.ringNodes[i] = e.target.checked ? 1 : 0;
+                if (!settings.ringNodes.some(x => x)) {
+                    // at least one node must stay ringed -- revert
+                    settings.ringNodes[i] = prev;
+                    e.target.checked = !!prev;
+                    return;
+                }
+                fullRebuild();
+            });
+        }
+
+        document.getElementById('duo-p').addEventListener('input', (e) => {
+            settings.duoP = parseInt(e.target.value);
+            document.getElementById('val-duop').textContent = settings.duoP;
+            buildTopology();
+            buildRenderObjects();
+        });
+        document.getElementById('duo-q').addEventListener('input', (e) => {
+            settings.duoQ = parseInt(e.target.value);
+            document.getElementById('val-duoq').textContent = settings.duoQ;
+            buildTopology();
+            buildRenderObjects();
+        });
+
+        document.getElementById('style-select').addEventListener('change', (e) => {
+            settings.style = e.target.value;
+            toggleStyleUI();
+            fullRebuild();
+        });
+
+        document.getElementById('render-select').addEventListener('change', (e) => {
+            settings.render = e.target.value;
+            toggleRenderUI();
+            buildRenderObjects();
+        });
+
+        document.getElementById('half-check').addEventListener('change', (e) => {
+            settings.half = e.target.checked;
+            fullRebuild();
+        });
+
+        document.getElementById('dual-check').addEventListener('change', (e) => {
+            settings.dualCompound = e.target.checked;
+            updateColorVisibility();
+            fullRebuild();
+        });
+
+        // --- Colors: update settings + the cached systems entry (so a later
+        // buildRenderObjects(), e.g. from a render-mode change, keeps the
+        // picked color) + the live material directly (instant feedback,
+        // no rebuild needed). ---
+        function hexToInt(hex) { return parseInt(hex.replace('#', ''), 16); }
+
+        document.getElementById('color-primal-edge').addEventListener('input', (e) => {
+            const c = hexToInt(e.target.value);
+            settings.colorPrimalEdge = c;
+            if (systems[0]) systems[0].colorEdge = c;
+            const entry = renderObjs[0];
+            if (entry) {
+                if (entry.tubeMeshObj) entry.tubeMeshObj.material.color.setHex(c);
+                if (entry.lines) entry.lines.material.color.setHex(c);
+            }
+        });
+        document.getElementById('color-primal-node').addEventListener('input', (e) => {
+            const c = hexToInt(e.target.value);
+            settings.colorPrimalNode = c;
+            if (systems[0]) systems[0].colorNode = c;
+            if (renderObjs[0] && renderObjs[0].sphereMesh) renderObjs[0].sphereMesh.material.color.setHex(c);
+        });
+        document.getElementById('color-dual-edge').addEventListener('input', (e) => {
+            const c = hexToInt(e.target.value);
+            settings.colorDualEdge = c;
+            if (systems[1]) systems[1].colorEdge = c;
+            const entry = renderObjs[1];
+            if (entry) {
+                if (entry.tubeMeshObj) entry.tubeMeshObj.material.color.setHex(c);
+                if (entry.lines) entry.lines.material.color.setHex(c);
+            }
+        });
+        document.getElementById('color-dual-node').addEventListener('input', (e) => {
+            const c = hexToInt(e.target.value);
+            settings.colorDualNode = c;
+            if (systems[1]) systems[1].colorNode = c;
+            if (renderObjs[1] && renderObjs[1].sphereMesh) renderObjs[1].sphereMesh.material.color.setHex(c);
+        });
+
+        document.getElementById('light-slider').addEventListener('input', (e) => {
+            const mult = parseFloat(e.target.value);
+            document.getElementById('val-light').textContent = mult.toFixed(2);
+            ambientLight.intensity = LIGHT_BASE.ambient * mult;
+            dirLight.intensity = LIGHT_BASE.dir * mult;
+            pointLight.intensity = LIGHT_BASE.point * mult;
+        });
+
+        document.getElementById('export-obj-btn').addEventListener('click', () => doExport('obj'));
+        document.getElementById('export-stl-btn').addEventListener('click', () => doExport('stl'));
+
+        toggleFormUI();
+        toggleStyleUI();
+        toggleRenderUI();
+        fullRebuild();
+
+        // --- 7. Main loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateGeometry();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
