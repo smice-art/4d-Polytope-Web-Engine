@@ -13,7 +13,7 @@ The idea behind this add-on was to make it possible, beside "jenn3D" or other gr
 * There are several templates integrated
 
 # Screen Shot (click to visit)
-[![watch](images/screen.jpg)](https://smice-art.github.io/polytope)
+[![watch](images/screen.jpg)](https://smice-art.github.io/4d-Polytope-Web-Engine/)
 
 
 | Object | Preview |
