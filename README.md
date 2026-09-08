@@ -12,7 +12,7 @@ The idea behind this add-on was to make it possible, beside "jenn3D" or other gr
 * You can export objects in stl or obj
 * There are several templates integrated
 
-# Screen Shot & LIVE Version (click to visit)
+# Screen Shot & LIVE Version (click to visit and ignore, if asked for redirection)
 [![watch](images/screen.jpg)](https://smice-art.github.io/4d-Polytope-Web-Engine/)
 
 
